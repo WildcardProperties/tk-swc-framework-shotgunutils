@@ -201,7 +201,7 @@ class ShotgunFindDataHandler(ShotgunDataHandler):
         sg_data = self._get_peforce_data(sg_data)
         #self._get_latest_revision(files_to_sync)
 
-        # self._log_debug(">>>>>>> sg_data is: {}".format(sg_data))
+        #self._log_debug(">>>>>>> sg_data is: {}".format(sg_data))
         self._log_debug("Generating new tree in memory...")
 
         # create a brand new tree rather than trying to be clever
@@ -230,8 +230,14 @@ class ShotgunFindDataHandler(ShotgunDataHandler):
                             parent_uid, field_name, sg_item
                         )
                     else:
-                        # on the leaf level, use the entity id as the unique key
-                        unique_field_value = sg_item["id"]
+                        if sg_item.get("type", None) == "depotFile":
+                            # generate path for this item
+                            unique_field_value = self.__generate_unique_key(
+                                parent_uid, field_name, sg_item
+                            )
+                        else:
+                            # on the leaf level, use the entity id as the unique key
+                            unique_field_value = sg_item["id"]
 
                     # two distinct cases for leaves and non-leaves
                     if on_leaf_level:
@@ -366,8 +372,10 @@ class ShotgunFindDataHandler(ShotgunDataHandler):
     def _get_peforce_data(self, sg_data):
         if sg_data:
             if len(sg_data) <= 6:
+                self._log_debug(">>>>>>>>>>  Processing small data")
                 sg_data = self._get_small_peforce_data(sg_data)
             else:
+                self._log_debug(">>>>>>>>>>  Processing large data")
                 sg_data = self._get_large_peforce_data(sg_data)
         return sg_data
 
@@ -377,29 +385,30 @@ class ShotgunFindDataHandler(ShotgunDataHandler):
         """
         item_path_dict = defaultdict(int)
         fstat_dict = {}
+        unpublished_list = []
         if sg_data:
             for i, sg_item in enumerate(sg_data):
+                #if i == 0:
+                #    self._log_debug("sg_item is: {}".format(sg_item))
                 if "path" in sg_item:
-                    if "local_path" in sg_item["path"]:
-                        local_path = sg_item["path"].get("local_path", None)
+                    local_path = sg_item["path"].get("local_path", None)
+                    if local_path:
                         # self._log_debug("local_path is: {}".format(local_path))
-                        item_path = self._get_item_path(local_path)
-                        # self._log_debug("item_path is: {}".format(item_path))
-                        if item_path not in item_path_dict:
-                            item_path_dict[item_path] = 1
-                        else:
-                            item_path_dict[item_path] += 1
-            # self._log_debug(">>>>>>>>>>  item_path_dict is: {}".format(item_path_dict))
+                        # item_path = self._get_item_path(local_path)
+                        item_path = os.path.dirname(local_path)
+                        item_path_dict[item_path] += 1
+            self._log_debug(">>>>>>>>>>  item_path_dict is: {}".format(item_path_dict))
 
             for key in item_path_dict:
                 if key:
                     # self._log_debug(">>>>>>>>>>  key is: {}".format(key))
                     key = "{}\\...".format(key)
-                    self._log_debug("^^^ key is: {}".format(key))
+                    # self._log_debug("^^^ key is: {}".format(key))
                     fstat_list = self._p4.run("fstat", key)
                     for i, fstat in enumerate(fstat_list):
                         # if i == 0:
-                        #    self._log_debug(">>>>>>>>>>  fstat is: {}".format(fstat))
+                        #    self._log_debug(">>>>>>>>>  fstat is: {}".format(fstat))
+                        # self._log_debug("{}: >>>>>  fstat is: {}".format(i, fstat))
                         client_file = fstat.get('clientFile', None)
                         # if i == 0:
                         #    self._log_debug(">>>>>>>>>>  client_file is: {}".format(client_file))
@@ -418,6 +427,8 @@ class ShotgunFindDataHandler(ShotgunDataHandler):
                                 fstat_dict[modified_client_file]['clientFile'] = client_file
                                 fstat_dict[modified_client_file]['haveRev'] = have_rev
                                 fstat_dict[modified_client_file]['headRev'] = head_rev
+                                fstat_dict[modified_client_file]['Published'] = False
+                                fstat_dict[modified_client_file]['headModTime'] = fstat.get('headModTime', 'N/A')
                                 # if i == 0:
                                 #     self._log_debug(">>>>>>>>>>  fstat_dict[client_file] is: {}".format(fstat_dict[modified_client_file]))
             # self._log_debug(">>>>>>>>>>  fstat_dict is: {}".format(fstat_dict))
@@ -440,13 +451,34 @@ class ShotgunFindDataHandler(ShotgunDataHandler):
 
                             have_rev = fstat_dict[modified_local_path].get('haveRev', "0")
                             head_rev = fstat_dict[modified_local_path].get('headRev', "0")
+                            fstat_dict[modified_local_path]['Published'] = True
                             # self._log_debug(">>>>>>>>>>  have_rev is: {}".format(have_rev))
                             # self._log_debug(">>>>>>>>>>  head_rev is: {}".format(head_rev))
 
                             sg_item["haveRev"], sg_item["headRev"] = have_rev, head_rev
                             sg_item["revision"] = "{}/{}".format(have_rev, head_rev)
-                # if i == 0:
+                #if i == 0:
                 #    self._log_debug(">>> {}: SG item: {}".format(i, sg_item))
+
+            for key in fstat_dict:
+                if not fstat_dict[key]["Published"]:
+                    sg_item = {}
+                    file_path = fstat_dict[key]["clientFile"]
+                    sg_item["name"] = os.path.basename(file_path)
+                    sg_item["code"] = "{}#0".format(sg_item["name"])
+                    sg_item["sg_status_list"] = "p4edit"
+                    sg_item["type"] = "depotFile"
+                    sg_item["published_file_type"] = None
+                    # sg_item["published_file_type"] = {'id': 265, 'name': 'Motion Builder FBX', 'type': 'PublishedFileType'}
+                    sg_item["path"] = {}
+                    sg_item["path"]["local_path"] = file_path
+                    sg_item["haveRev"] = fstat_dict[key]["haveRev"]
+                    sg_item["headRev"] = fstat_dict[key]["headRev"]
+                    sg_item["revision"] = "{}/{}".format(fstat_dict[key]["haveRev"], fstat_dict[key]["headRev"])
+                    #sg_item["created_at"] = fstat_dict[key].get('headModTime', "N/A")
+                    sg_item["created_at"] = 0
+                    # self._log_debug(">>>>>>>>>>>>>>>>> New SG item: {}".format(sg_item))
+                    sg_data.append(sg_item)
 
         return sg_data
 
@@ -477,22 +509,22 @@ class ShotgunFindDataHandler(ShotgunDataHandler):
         if sg_data:
             for i, sg_item in enumerate(sg_data):
                 if "path" in sg_item:
-                    if "local_path" in sg_item["path"]:
-                        local_path = sg_item["path"].get("local_path", None)
-                        # self._log_debug(">>>>>>> local_path is: {}".format(local_path))
-                        if local_path:
-                            fstat_list = self._p4.run("fstat", local_path)
-                            # self._log_debug("fstat_list: {}".format(fstat_list))
-                            fstat = fstat_list[0]
-                            # self._log_debug("fstat is: {}".format(fstat))
-                            have_rev = fstat.get('haveRev', "0")
-                            head_rev = fstat.get('headRev', "0")
-                            sg_item["haveRev"], sg_item["headRev"] = have_rev, head_rev
-                            sg_item["revision"] = "{}/{}".format(have_rev, head_rev )
-                            # self._log_debug("{}: Revision: {}".format(i, sg_item["revision"]))
-                            # sg_item['depotFile'] = fstat.get('depotFile', None)
+                    local_path = sg_item["path"].get("local_path", None)
 
-                # self._log_debug("{}: SG item: {}".format(i, sg_item))
+                    # self._log_debug(">>>>>>> local_path is: {}".format(local_path))
+                    if local_path:
+                        fstat_list = self._p4.run("fstat", local_path)
+                        # self._log_debug("fstat_list: {}".format(fstat_list))
+                        fstat = fstat_list[0]
+                        # self._log_debug("fstat is: {}".format(fstat))
+                        have_rev = fstat.get('haveRev', "0")
+                        head_rev = fstat.get('headRev', "0")
+                        sg_item["haveRev"], sg_item["headRev"] = have_rev, head_rev
+                        sg_item["revision"] = "{}/{}".format(have_rev, head_rev )
+                        # self._log_debug("{}: Revision: {}".format(i, sg_item["revision"]))
+                        # sg_item['depotFile'] = fstat.get('depotFile', None)
+
+            # self._log_debug("{}: SG item: {}".format(i, sg_item))
 
         return sg_data
 
