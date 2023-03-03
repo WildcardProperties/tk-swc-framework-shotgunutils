@@ -13,6 +13,7 @@ from .data_handler import ShotgunDataHandler
 from .errors import ShotgunModelDataError
 from .data_handler_cache import ShotgunDataHandlerCache
 from .util import compare_shotgun_data
+from .publish_item import PublishItem
 import sgtk
 from collections import defaultdict
 import os
@@ -75,6 +76,39 @@ class ShotgunFindDataHandler(ShotgunDataHandler):
         self._sg_data = None
         self._p4 = None
         self._peforce_data = {}
+        self.status_dict = {
+            "add": "p4add",
+            "delete": "p4del",
+            "edit": "p4edit"
+        }
+        self.settings = {
+            "wire": "Alias File",
+            "abc": "Alembic Cache",
+            "max": "3dsmax Scene",
+            "hrox": "NukeStudio Project",
+            "hip": "Houdini Scene",
+            "hipnc": "Houdini Scene",
+            "ma": "Maya Scene",
+            "mb": "Maya Scene",
+            "fbx": "Motion Builder FBX",
+            "nk": "Nuke Script",
+            "psd": "Photoshop Image",
+            "psb": "Photoshop Image",
+            "vpb": "VRED Scene",
+            "vpe": "VRED Scene",
+            "osb": "VRED Scene",
+            "dpx": "Rendered Image",
+            "exr": "Rendered Image",
+            "tiff": "Texture",
+            "tx": "Texture",
+            "tga": "Texture",
+            "dds": "Texture",
+            "jpeg": "Image",
+            "jpg": "Image",
+            "mov": "Movie",
+            "mp4": "Movie",
+            "pdf": "PDF"
+        }
 
     def get_entity_ids(self):
         """
@@ -193,14 +227,21 @@ class ShotgunFindDataHandler(ShotgunDataHandler):
 
         # ensure the data is clean
         self._log_debug("sanitizing data...")
+        """
+        self._log_debug(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Arrived sg_data is: {}".format(sg_data))
+        for sg_item in sg_data:
+            self._log_debug(">>> Begin: ")
+            for k, v in sg_item.items():
+                self._log_debug("{}: {}".format(k, v))
+            self._log_debug(">>> End: ")
+        """
         sg_data = self._sg_clean_data(sg_data)
         self._log_debug("...done!")
 
         self._connect()
         # Get perforce data
         sg_data = self._get_peforce_data(sg_data)
-        #self._get_latest_revision(files_to_sync)
-
+        # self._log_debug(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> MODIFIED sg_data is: {}".format(sg_data))
         #self._log_debug(">>>>>>> sg_data is: {}".format(sg_data))
         self._log_debug("Generating new tree in memory...")
 
@@ -371,7 +412,7 @@ class ShotgunFindDataHandler(ShotgunDataHandler):
 
     def _get_peforce_data(self, sg_data):
         if sg_data:
-            if len(sg_data) <= 6:
+            if len(sg_data) <= 1:
                 self._log_debug(">>>>>>>>>>  Processing small data")
                 sg_data = self._get_small_peforce_data(sg_data)
             else:
@@ -385,7 +426,6 @@ class ShotgunFindDataHandler(ShotgunDataHandler):
         """
         item_path_dict = defaultdict(int)
         fstat_dict = {}
-        unpublished_list = []
         if sg_data:
             for i, sg_item in enumerate(sg_data):
                 #if i == 0:
@@ -397,7 +437,7 @@ class ShotgunFindDataHandler(ShotgunDataHandler):
                         # item_path = self._get_item_path(local_path)
                         item_path = os.path.dirname(local_path)
                         item_path_dict[item_path] += 1
-            self._log_debug(">>>>>>>>>>  item_path_dict is: {}".format(item_path_dict))
+            #self._log_debug(">>>>>>>>>>  item_path_dict is: {}".format(item_path_dict))
 
             for key in item_path_dict:
                 if key:
@@ -424,11 +464,15 @@ class ShotgunFindDataHandler(ShotgunDataHandler):
                                 # if i == 0:
                                 #    self._log_debug(">>>>>>>>>>  client_file is: {}".format(client_file))
                                 fstat_dict[modified_client_file] = {}
+                                # fstat_dict[modified_client_file] = fstat
                                 fstat_dict[modified_client_file]['clientFile'] = client_file
                                 fstat_dict[modified_client_file]['haveRev'] = have_rev
                                 fstat_dict[modified_client_file]['headRev'] = head_rev
                                 fstat_dict[modified_client_file]['Published'] = False
                                 fstat_dict[modified_client_file]['headModTime'] = fstat.get('headModTime', 'N/A')
+                                fstat_dict[modified_client_file]['depotFile'] = fstat.get('depotFile', None)
+                                fstat_dict[modified_client_file]['headAction'] = fstat.get('headAction', None)
+                                fstat_dict[modified_client_file]['headChange'] = fstat.get('headChange', None)
                                 # if i == 0:
                                 #     self._log_debug(">>>>>>>>>>  fstat_dict[client_file] is: {}".format(fstat_dict[modified_client_file]))
             # self._log_debug(">>>>>>>>>>  fstat_dict is: {}".format(fstat_dict))
@@ -439,48 +483,72 @@ class ShotgunFindDataHandler(ShotgunDataHandler):
                         local_path = sg_item["path"].get("local_path", None)
                         modified_local_path = self._create_key(local_path)
 
-                        # if i == 0:
-                        # self._log_debug(">>>>>>>>>>  sg_item is: {}".format(sg_item))
-                        # self._log_debug(">>>>>>>>>>  sg_item_path is: {}".format(sg_item["path"]))
-                        # self._log_debug(">>>>>>>>>>  local_path is: {}".format(local_path))
-                        # self._log_debug(">>>>>>>>>>  modified_local_path is: {}".format(modified_local_path))
-                        # if modified_local_path in fstat_dict:
-                        #    self._log_debug(">>>>>>>>>>  modified_local_path in fstat_dict is: {}".format(fstat_dict[modified_local_path]))
-
                         if modified_local_path and modified_local_path in fstat_dict:
 
                             have_rev = fstat_dict[modified_local_path].get('haveRev', "0")
                             head_rev = fstat_dict[modified_local_path].get('headRev', "0")
                             fstat_dict[modified_local_path]['Published'] = True
-                            # self._log_debug(">>>>>>>>>>  have_rev is: {}".format(have_rev))
-                            # self._log_debug(">>>>>>>>>>  head_rev is: {}".format(head_rev))
 
                             sg_item["haveRev"], sg_item["headRev"] = have_rev, head_rev
                             sg_item["revision"] = "{}/{}".format(have_rev, head_rev)
-                #if i == 0:
-                #    self._log_debug(">>> {}: SG item: {}".format(i, sg_item))
-
-            for key in fstat_dict:
-                if not fstat_dict[key]["Published"]:
-                    sg_item = {}
-                    file_path = fstat_dict[key]["clientFile"]
-                    sg_item["name"] = os.path.basename(file_path)
-                    sg_item["code"] = "{}#0".format(sg_item["name"])
-                    sg_item["sg_status_list"] = "p4edit"
-                    sg_item["type"] = "depotFile"
-                    sg_item["published_file_type"] = None
-                    # sg_item["published_file_type"] = {'id': 265, 'name': 'Motion Builder FBX', 'type': 'PublishedFileType'}
-                    sg_item["path"] = {}
-                    sg_item["path"]["local_path"] = file_path
-                    sg_item["haveRev"] = fstat_dict[key]["haveRev"]
-                    sg_item["headRev"] = fstat_dict[key]["headRev"]
-                    sg_item["revision"] = "{}/{}".format(fstat_dict[key]["haveRev"], fstat_dict[key]["headRev"])
-                    #sg_item["created_at"] = fstat_dict[key].get('headModTime', "N/A")
-                    sg_item["created_at"] = 0
-                    # self._log_debug(">>>>>>>>>>>>>>>>> New SG item: {}".format(sg_item))
-                    sg_data.append(sg_item)
+                            #if sg_item.get("version_number", 0) == 0:
+                            #    sg_item["version_number"] = int(head_rev)
 
         return sg_data
+
+    def _get_file_log(self, file_path):
+        try:
+            filelog_list = self._p4.run("filelog", file_path)
+            # self._log_debug(">>>>>> filelog_list: {}".format(filelog_list))
+            if filelog_list:
+                filelog = filelog_list[0]
+                # 'desc': ['- Climb Idle ']
+                desc = filelog.get("desc", None)
+                if desc:
+                    desc = desc[0]
+                    if desc.startswith("-"):
+                        desc = desc[1:]
+                    if desc.startswith(" "):
+                        desc = desc[1:]
+                # 'user': ['michael']
+                user = filelog.get("user", None)
+                if user:
+                    user = user[0]
+                    user = user.capitalize()
+                return desc, user
+            else:
+                return None, None
+        except:
+            return None, None
+
+    def _get_publish_type(self, publish_path):
+        """
+        Get a publish type
+        """
+        publish_type = None
+        publish_path = os.path.splitext(publish_path)
+        if len(publish_path) >= 2:
+            extension = publish_path[1]
+
+            # ensure lowercase and no dot
+            if extension:
+                extension = extension.lstrip(".").lower()
+                publish_type = self.settings.get(extension, None)
+                if not publish_type:
+                    # publish type is based on extension
+                    publish_type = "%s File" % extension.capitalize()
+            else:
+                # no extension, assume it is a folder
+                publish_type = "Folder"
+        return publish_type
+
+    def _get_p4_status(self, p4_status):
+
+        p4_status = p4_status.lower()
+        sg_status = self.status_dict.get(p4_status, None)
+        # self._log_debug("p4_status: {}".format(p4_status))
+        # self._log_debug("sg_status: {}".format(sg_status))
+        return sg_status
 
     def _create_key(self, file_path):
         if file_path:
