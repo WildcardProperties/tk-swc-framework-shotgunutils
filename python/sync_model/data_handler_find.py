@@ -324,6 +324,7 @@ class ShotgunFindDataHandler(ShotgunDataHandler):
         self._log_debug(
             ">>>>>>>>>>>>>>>>>>>>>>>>>> ShotGrid data is:"
         )
+        """
         if sg_data:
             for i, item_dict in enumerate(sg_data):
                 self._log_debug(
@@ -333,7 +334,7 @@ class ShotgunFindDataHandler(ShotgunDataHandler):
                     self._log_debug(
                         ">>>>> {}:{}".format(k, v)
                     )
-
+        """
         self._log_debug(
             "ShotGrid data (%d records) received and processed. " % len(sg_data)
         )
