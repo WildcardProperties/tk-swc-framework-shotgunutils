@@ -242,7 +242,8 @@ class ShotgunFindDataHandler(ShotgunDataHandler):
         # Get perforce data
         sg_data = self._get_peforce_data(sg_data)
         # self._log_debug(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> MODIFIED sg_data is: {}".format(sg_data))
-        #self._log_debug(">>>>>>> sg_data is: {}".format(sg_data))
+        # self._log_debug(">>>>>>> sg_data is: {}".format(sg_data))
+
         self._log_debug("Generating new tree in memory...")
 
         # create a brand new tree rather than trying to be clever
