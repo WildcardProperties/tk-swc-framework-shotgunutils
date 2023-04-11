@@ -292,7 +292,7 @@ class ShotgunDataHandler(object):
             "implemented for this ShotgunDataHandler subclass."
         )
 
-    def update_data(self, sg_data):
+    def update_data(self, sg_data, p4_connection=None):
         """
         The counterpart to :meth:`generate_data_request`. When the data
         request has been carried out, this method should be called by the calling

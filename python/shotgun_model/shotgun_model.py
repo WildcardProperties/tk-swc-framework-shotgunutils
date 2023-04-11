@@ -352,6 +352,11 @@ class ShotgunModel(ShotgunQueryModel):
         self._log_debug("Editable Columns: %s" % self.__editable_fields)
         self._log_debug("Filter Presets: %s" % self.__additional_filter_presets)
 
+        #self._bundle = sgtk.platform.current_bundle()
+        #sg_data = self._bundle.shotgun.find(
+        #    self.__entity_type, self.__filters, self.__fields
+        #)
+        #self._log_debug("------>>>>>>>> Entity Data is: ".format(sg_data))
         # get the cache path based on these new data query parameters
         self._data_handler = ShotgunFindDataHandler(
             self.__entity_type,

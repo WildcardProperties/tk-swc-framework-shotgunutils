@@ -16,6 +16,7 @@ from .util import compare_shotgun_data
 from .publish_item import PublishItem
 import sgtk
 from collections import defaultdict
+from .connection import connect
 import os
 
 
@@ -75,6 +76,9 @@ class ShotgunFindDataHandler(ShotgunDataHandler):
         self.__additional_filter_presets = additional_filter_presets
         self._sg_data = None
         self._p4 = None
+        #self._fw = sgtk.platform.get_framework("tk-framework-perforce")
+        #self._p4 = self._fw.connection.connect()
+        #self._p4 = connect()
         self._peforce_data = {}
         self.status_dict = {
             "add": "p4add",
@@ -185,7 +189,7 @@ class ShotgunFindDataHandler(ShotgunDataHandler):
         return request_id
 
     @sgtk.LogManager.log_timing
-    def update_data(self, sg_data):
+    def update_data(self, sg_data, p4_connection = None):
         """
         The counterpart to :meth:`generate_data_request`. When the data
         request has been carried out, this method should be called by the calling
@@ -212,6 +216,7 @@ class ShotgunFindDataHandler(ShotgunDataHandler):
         :returns: list of updates. see above
         :raises: :class:`ShotgunModelDataError` if no cache is loaded into memory
         """
+        self._p4 = p4_connection
         self._log_debug("Updating %s with %s shotgun records." % (self, len(sg_data)))
         self._log_debug("Hierarchy: %s" % self.__hierarchy)
 
@@ -230,7 +235,9 @@ class ShotgunFindDataHandler(ShotgunDataHandler):
         sg_data = self._sg_clean_data(sg_data)
         self._log_debug("...done!")
 
-        self._connect()
+        #if not self._p4:
+        #    self._connect()
+
         # Get perforce data
         sg_data = self._get_peforce_data(sg_data)
         # self._log_debug(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> MODIFIED sg_data is: {}".format(sg_data))
@@ -382,12 +389,14 @@ class ShotgunFindDataHandler(ShotgunDataHandler):
 
     def _get_peforce_data(self, sg_data):
         if sg_data:
+            """
             if len(sg_data) <= 1:
                 self._log_debug(">>>>>>>>>>  Processing small data")
                 sg_data = self._get_small_peforce_data(sg_data)
             else:
-                self._log_debug(">>>>>>>>>>  Processing large data")
-                sg_data = self._get_large_peforce_data(sg_data)
+            """
+            self._log_debug(">>>>>>>>>>  Processing large data")
+            sg_data = self._get_large_peforce_data(sg_data)
         return sg_data
 
     def _get_large_peforce_data(self, sg_data):
@@ -416,8 +425,8 @@ class ShotgunFindDataHandler(ShotgunDataHandler):
                     # self._log_debug("^^^ key is: {}".format(key))
                     fstat_list = self._p4.run("fstat", key)
                     for i, fstat in enumerate(fstat_list):
-                        # if i == 0:
-                        #    self._log_debug(">>>>>>>>>  fstat is: {}".format(fstat))
+                        #if i == 0:
+                        #self._log_debug(">>>>>>>>>  fstat is: {}".format(fstat))
                         # self._log_debug("{}: >>>>>  fstat is: {}".format(i, fstat))
                         client_file = fstat.get('clientFile', None)
                         # if i == 0:
@@ -442,7 +451,14 @@ class ShotgunFindDataHandler(ShotgunDataHandler):
                                 fstat_dict[modified_client_file]['headModTime'] = fstat.get('headModTime', 'N/A')
                                 fstat_dict[modified_client_file]['depotFile'] = fstat.get('depotFile', None)
                                 fstat_dict[modified_client_file]['headAction'] = fstat.get('headAction', None)
+                                fstat_dict[modified_client_file]['action'] = fstat.get('action', None)
                                 fstat_dict[modified_client_file]['headChange'] = fstat.get('headChange', None)
+                                action = fstat.get('action', None)
+                                if action:
+                                    sg_status = self._get_p4_status(action)
+                                    if sg_status:
+                                        fstat_dict[modified_client_file]['sg_status_list'] = sg_status
+
                                 # if i == 0:
                                 #     self._log_debug(">>>>>>>>>>  fstat_dict[client_file] is: {}".format(fstat_dict[modified_client_file]))
             # self._log_debug(">>>>>>>>>>  fstat_dict is: {}".format(fstat_dict))
@@ -461,6 +477,12 @@ class ShotgunFindDataHandler(ShotgunDataHandler):
 
                             sg_item["haveRev"], sg_item["headRev"] = have_rev, head_rev
                             sg_item["revision"] = "{}/{}".format(have_rev, head_rev)
+                            sg_item["headAction"] = fstat_dict[modified_local_path].get('headAction', None)
+                            sg_item["action"] = fstat_dict[modified_local_path].get('action', None)
+                            sg_item["depotFile"] = fstat_dict[modified_local_path].get('depotFile', None)
+                            sg_item["sg_status_list"] = fstat_dict[modified_local_path].get('sg_status_list', None)
+                            #sg_item["newAction"] = sg_item["headAction"]
+                            # sg_item["newAction"] = None
                             #if sg_item.get("version_number", 0) == 0:
                             #    sg_item["version_number"] = int(head_rev)
 
@@ -592,7 +614,7 @@ class ShotgunFindDataHandler(ShotgunDataHandler):
         depot_path = "/{}".format(depot_path)
         return depot_path
 
-    def _connect(self):
+    def _connect_P4(self):
         """
         Connect to Perforce.  If a connection can't be established with
         the current settings then the connection UI will be shown.
@@ -600,7 +622,7 @@ class ShotgunFindDataHandler(ShotgunDataHandler):
         try:
             if not self._p4:
                 self._log_debug("Connecting to perforce ...")
-                self._fw = sgtk.platform.get_framework("tk-framework-perforce")
+                #self._fw = sgtk.platform.get_framework("tk-framework-perforce")
                 self._p4 = self._fw.connection.connect()
 
         except:
