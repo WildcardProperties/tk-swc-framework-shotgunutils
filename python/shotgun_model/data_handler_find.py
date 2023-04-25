@@ -82,6 +82,7 @@ class ShotgunFindDataHandler(ShotgunDataHandler):
         self._peforce_data = {}
         self.status_dict = {
             "add": "p4add",
+            "move/add": "p4add",
             "delete": "p4del",
             "edit": "p4edit"
         }
@@ -427,7 +428,7 @@ class ShotgunFindDataHandler(ShotgunDataHandler):
                     for i, fstat in enumerate(fstat_list):
                         #if i == 0:
                         #self._log_debug(">>>>>>>>>  fstat is: {}".format(fstat))
-                        # self._log_debug("{}: >>>>>  fstat is: {}".format(i, fstat))
+                        #    self._log_debug("{}: >>>>>  fstat is: {} ...".format(i, fstat))
                         client_file = fstat.get('clientFile', None)
                         # if i == 0:
                         #    self._log_debug(">>>>>>>>>>  client_file is: {}".format(client_file))
@@ -442,17 +443,26 @@ class ShotgunFindDataHandler(ShotgunDataHandler):
 
                                 # if i == 0:
                                 #    self._log_debug(">>>>>>>>>>  client_file is: {}".format(client_file))
+
+
+                                """
                                 fstat_dict[modified_client_file] = {}
                                 # fstat_dict[modified_client_file] = fstat
                                 fstat_dict[modified_client_file]['clientFile'] = client_file
                                 fstat_dict[modified_client_file]['haveRev'] = have_rev
                                 fstat_dict[modified_client_file]['headRev'] = head_rev
                                 fstat_dict[modified_client_file]['Published'] = False
-                                fstat_dict[modified_client_file]['headModTime'] = fstat.get('headModTime', 'N/A')
+                                fstat_dict[modified_client_file]['headModTime'] = fstat.get('headModTime', None)
                                 fstat_dict[modified_client_file]['depotFile'] = fstat.get('depotFile', None)
                                 fstat_dict[modified_client_file]['headAction'] = fstat.get('headAction', None)
                                 fstat_dict[modified_client_file]['action'] = fstat.get('action', None)
                                 fstat_dict[modified_client_file]['headChange'] = fstat.get('headChange', None)
+                                fstat_dict[modified_client_file]['actionOwner'] = fstat.get('actionOwner', None)
+                                fstat_dict[modified_client_file]['headTime'] = fstat.get('headTime', None)
+                                fstat_dict[modified_client_file]['sg_p4_user'] = fstat.get('sg_p4_user', None)
+                                """
+                                fstat_dict[modified_client_file] = fstat
+                                fstat_dict[modified_client_file]['Published'] = False
                                 action = fstat.get('action', None)
                                 if action:
                                     sg_status = self._get_p4_status(action)
@@ -481,6 +491,10 @@ class ShotgunFindDataHandler(ShotgunDataHandler):
                             sg_item["action"] = fstat_dict[modified_local_path].get('action', None)
                             sg_item["depotFile"] = fstat_dict[modified_local_path].get('depotFile', None)
                             sg_item["sg_status_list"] = fstat_dict[modified_local_path].get('sg_status_list', None)
+                            sg_item["headModTime"] = fstat_dict[modified_local_path].get('headModTime', None)
+                            sg_item["actionOwner"] = fstat_dict[modified_local_path].get('actionOwner', None)
+                            sg_item["headTime"] = fstat_dict[modified_local_path].get('headTime', None)
+                            sg_item["sg_p4_user"] = fstat_dict[modified_local_path].get('sg_p4_user', None)
                             #sg_item["newAction"] = sg_item["headAction"]
                             # sg_item["newAction"] = None
                             #if sg_item.get("version_number", 0) == 0:
