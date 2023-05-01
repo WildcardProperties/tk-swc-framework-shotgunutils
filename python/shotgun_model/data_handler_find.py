@@ -504,7 +504,7 @@ class ShotgunFindDataHandler(ShotgunDataHandler):
 
     def _get_file_log(self, file_path):
         try:
-            filelog_list = self._p4.run("filelog", file_path)
+            filelog_list = self._p4.run("filelog", "-l", file_path)
             # self._log_debug(">>>>>> filelog_list: {}".format(filelog_list))
             if filelog_list:
                 filelog = filelog_list[0]
