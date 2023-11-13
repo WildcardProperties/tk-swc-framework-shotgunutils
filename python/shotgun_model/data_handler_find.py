@@ -40,6 +40,7 @@ class ShotgunFindDataHandler(ShotgunDataHandler):
         limit,
         additional_filter_presets,
         cache_path,
+        sg_data_type = None,
     ):
         """
         :param entity_type:               Shotgun entity type to download
@@ -74,6 +75,7 @@ class ShotgunFindDataHandler(ShotgunDataHandler):
         self.__download_thumbs = download_thumbs
         self.__limit = limit
         self.__additional_filter_presets = additional_filter_presets
+        self.__sg_data_type = sg_data_type
         self._sg_data = None
         self._p4 = None
         #self._fw = sgtk.platform.get_framework("tk-framework-perforce")
@@ -236,11 +238,15 @@ class ShotgunFindDataHandler(ShotgunDataHandler):
         sg_data = self._sg_clean_data(sg_data)
         self._log_debug("...done!")
 
-        #if not self._p4:
-        #    self._connect()
 
         # Get perforce data
-        sg_data = self._get_peforce_data(sg_data)
+        self._log_debug(">>>> data_handler_find->update_date: sg data type is {}".format(self.__sg_data_type))
+        if self.__sg_data_type == "Asset" or self.__sg_data_type == "Task":
+
+            if not self._p4:
+                self._connect_P4()
+            sg_data = self._get_peforce_data(sg_data)
+
         # self._log_debug(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> MODIFIED sg_data is: {}".format(sg_data))
         # self._log_debug(">>>>>>> sg_data is: {}".format(sg_data))
 
@@ -636,7 +642,7 @@ class ShotgunFindDataHandler(ShotgunDataHandler):
         try:
             if not self._p4:
                 self._log_debug("Connecting to perforce ...")
-                #self._fw = sgtk.platform.get_framework("tk-framework-perforce")
+                self._fw = sgtk.platform.get_framework("tk-framework-perforce")
                 self._p4 = self._fw.connection.connect()
 
         except:

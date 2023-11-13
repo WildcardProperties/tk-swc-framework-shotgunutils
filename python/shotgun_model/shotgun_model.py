@@ -244,6 +244,7 @@ class ShotgunModel(ShotgunQueryModel):
         columns=None,
         additional_filter_presets=None,
         editable_columns=None,
+        sg_data_type=None
     ):
         """
         This is the main method to use to configure the model. You basically
@@ -334,6 +335,7 @@ class ShotgunModel(ShotgunQueryModel):
         self.__editable_fields = editable_columns or []
         self.__limit = limit or 0  # 0 means get all matches
         self.__additional_filter_presets = additional_filter_presets
+        self.__sg_data_type = sg_data_type
 
         # make sure `editable_fields` is a subset of `column_fields`
         if not set(self.__editable_fields).issubset(set(self.__column_fields)):
@@ -344,6 +346,7 @@ class ShotgunModel(ShotgunQueryModel):
         self._log_debug("")
         self._log_debug("Model Reset for %s" % self)
         self._log_debug("Entity type: %s" % self.__entity_type)
+        self._log_debug("sg data type: %s" % self.__sg_data_type)
         self._log_debug("Filters: %s" % self.__filters)
         self._log_debug("Hierarchy: %s" % self.__hierarchy)
         self._log_debug("Fields: %s" % self.__fields)
@@ -368,6 +371,7 @@ class ShotgunModel(ShotgunQueryModel):
             self.__limit,
             self.__additional_filter_presets,
             self.__compute_cache_path(seed),
+            sg_data_type=self.__sg_data_type
         )
         # load up from disk
         self._log_debug("Loading data from cache file into memory...")

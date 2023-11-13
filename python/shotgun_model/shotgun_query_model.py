@@ -172,7 +172,6 @@ class ShotgunQueryModel(QtGui.QStandardItemModel):
 
         self._fw = sgtk.platform.get_framework("tk-framework-perforce")
         self._p4 = None
-        #self._p4 = self._fw.connection.connect()
 
     ############################################################################
     # public methods
@@ -1003,9 +1002,7 @@ class ShotgunQueryModel(QtGui.QStandardItemModel):
         # if there are any changes
         self._log_debug("Updating data model with new shotgun data...")
         self._log_debug("Updating P4 connection...")
-        if not self._p4:
-            self._p4 = self._fw.connection.connect()
-        modified_items = self._data_handler.update_data(sg_data, p4_connection=self._p4)
+        modified_items = self._data_handler.update_data(sg_data)
 
         self._log_debug(
             "ShotGrid data contained %d modifications" % len(modified_items)
