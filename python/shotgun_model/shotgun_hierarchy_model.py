@@ -137,7 +137,7 @@ class ShotgunHierarchyModel(ShotgunQueryModel):
         text_color = QtGui.QApplication.palette().text().color()
 
         # local import to avoid doc generation issues
-        from ..utils.color import color_mix
+        from ..utils import color_mix
 
         self._empty_item_color = color_mix(text_color, 1, base_color, 2)
 
@@ -518,12 +518,13 @@ class ShotgunHierarchyModel(ShotgunQueryModel):
         if icon:
             item.setIcon(icon)
 
-    def _create_item(self, parent, data_item):
+    def _create_item(self, parent, data_item, top_index=None):
         """
         Creates a model item for the tree given data out of the data store
 
         :param :class:`~PySide.QtGui.QStandardItem` parent: Model item to parent the node under
         :param :class:`ShotgunItemData` data_item: Data to populate new item with
+        :param int top_index: Indicates an index the item should be placed on the tree
 
         :returns: Model item
         :rtype: :class:`ShotgunStandardItem`
@@ -655,7 +656,7 @@ class ShotgunHierarchyModel(ShotgunQueryModel):
         # warn if the path is longer than the windows max path limitation
         if sgtk.util.is_windows() and len(data_cache_path) > 250:
             self._log_warning(
-                "ShotGrid hierarchy data cache file path may be affected by "
+                "Flow Production Tracking hierarchy data cache file path may be affected by "
                 "windows MAX_PATH limitation."
             )
 
@@ -685,7 +686,7 @@ class ShotgunHierarchyModel(ShotgunQueryModel):
         ):
             return (
                 False,
-                "The version of SG being used does not support querying for the project "
+                "The version of PTR being used does not support querying for the project "
                 "hierarchy. v7.0.2 is required.",
             )
         elif not hasattr(sg_connection, "nav_expand"):

@@ -13,10 +13,8 @@ from .data_handler import ShotgunDataHandler
 from .errors import ShotgunModelDataError
 from .data_handler_cache import ShotgunDataHandlerCache
 from .util import compare_shotgun_data
-from .publish_item import PublishItem
 import sgtk
 from collections import defaultdict
-from .connection import connect
 import os
 
 
@@ -78,9 +76,6 @@ class ShotgunFindDataHandler(ShotgunDataHandler):
         self.__sg_data_type = sg_data_type
         self._sg_data = None
         self._p4 = None
-        #self._fw = sgtk.platform.get_framework("tk-framework-perforce")
-        #self._p4 = self._fw.connection.connect()
-        #self._p4 = connect()
         self._peforce_data = {}
         self.status_dict = {
             "add": "p4add",
@@ -247,9 +242,6 @@ class ShotgunFindDataHandler(ShotgunDataHandler):
                 self._connect_P4()
             sg_data = self._get_peforce_data(sg_data)
 
-        # self._log_debug(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> MODIFIED sg_data is: {}".format(sg_data))
-        # self._log_debug(">>>>>>> sg_data is: {}".format(sg_data))
-
         self._log_debug("Generating new tree in memory...")
 
         # create a brand new tree rather than trying to be clever
@@ -382,7 +374,8 @@ class ShotgunFindDataHandler(ShotgunDataHandler):
         self._cache = new_cache
 
         self._log_debug(
-            "ShotGrid data (%d records) received and processed. " % len(sg_data)
+            "Flow Production Tracking data (%d records) received and processed. "
+            % len(sg_data)
         )
         self._log_debug("    The new tree is %d records." % self._cache.size)
         self._log_debug(
@@ -432,41 +425,15 @@ class ShotgunFindDataHandler(ShotgunDataHandler):
                     # self._log_debug("^^^ key is: {}".format(key))
                     fstat_list = self._p4.run("fstat", key)
                     for i, fstat in enumerate(fstat_list):
-                        #if i == 0:
-                        #self._log_debug(">>>>>>>>>  fstat is: {}".format(fstat))
-                        #    self._log_debug("{}: >>>>>  fstat is: {} ...".format(i, fstat))
                         client_file = fstat.get('clientFile', None)
                         # if i == 0:
                         #    self._log_debug(">>>>>>>>>>  client_file is: {}".format(client_file))
                         if client_file:
                             have_rev = fstat.get('haveRev', "0")
                             head_rev = fstat.get('headRev', "0")
-                            # if i == 0:
-                            #    self._log_debug(">>>>>>>>>>  have_rev is: {}".format(have_rev))
-                            #    self._log_debug(">>>>>>>>>>  head_rev is: {}".format(head_rev))
                             modified_client_file = self._create_key(client_file)
                             if modified_client_file not in fstat_dict:
 
-                                # if i == 0:
-                                #    self._log_debug(">>>>>>>>>>  client_file is: {}".format(client_file))
-
-
-                                """
-                                fstat_dict[modified_client_file] = {}
-                                # fstat_dict[modified_client_file] = fstat
-                                fstat_dict[modified_client_file]['clientFile'] = client_file
-                                fstat_dict[modified_client_file]['haveRev'] = have_rev
-                                fstat_dict[modified_client_file]['headRev'] = head_rev
-                                fstat_dict[modified_client_file]['Published'] = False
-                                fstat_dict[modified_client_file]['headModTime'] = fstat.get('headModTime', None)
-                                fstat_dict[modified_client_file]['depotFile'] = fstat.get('depotFile', None)
-                                fstat_dict[modified_client_file]['headAction'] = fstat.get('headAction', None)
-                                fstat_dict[modified_client_file]['action'] = fstat.get('action', None)
-                                fstat_dict[modified_client_file]['headChange'] = fstat.get('headChange', None)
-                                fstat_dict[modified_client_file]['actionOwner'] = fstat.get('actionOwner', None)
-                                fstat_dict[modified_client_file]['headTime'] = fstat.get('headTime', None)
-                                fstat_dict[modified_client_file]['sg_p4_user'] = fstat.get('sg_p4_user', None)
-                                """
                                 fstat_dict[modified_client_file] = fstat
                                 fstat_dict[modified_client_file]['Published'] = False
                                 action = fstat.get('action', None)
