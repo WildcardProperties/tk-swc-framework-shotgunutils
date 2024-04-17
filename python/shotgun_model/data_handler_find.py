@@ -409,13 +409,16 @@ class ShotgunFindDataHandler(ShotgunDataHandler):
             for i, sg_item in enumerate(sg_data):
                 #if i == 0:
                 #    self._log_debug("sg_item is: {}".format(sg_item))
-                if "path" in sg_item:
-                    local_path = sg_item["path"].get("local_path", None)
-                    if local_path:
-                        # self._log_debug("local_path is: {}".format(local_path))
-                        # item_path = self._get_item_path(local_path)
-                        item_path = os.path.dirname(local_path)
-                        item_path_dict[item_path] += 1
+                sg_item_path = sg_item.get("path", None)
+                if sg_item_path:
+                    if "local_path" in sg_item_path:
+                        local_path = sg_item_path.get("local_path", None)
+
+                        if local_path:
+                            # self._log_debug("local_path is: {}".format(local_path))
+                            # item_path = self._get_item_path(local_path)
+                            item_path = os.path.dirname(local_path)
+                            item_path_dict[item_path] += 1
             #self._log_debug(">>>>>>>>>>  item_path_dict is: {}".format(item_path_dict))
 
             for key in item_path_dict:
@@ -447,9 +450,10 @@ class ShotgunFindDataHandler(ShotgunDataHandler):
             # self._log_debug(">>>>>>>>>>  fstat_dict is: {}".format(fstat_dict))
 
             for i, sg_item in enumerate(sg_data):
-                if "path" in sg_item:
-                    if "local_path" in sg_item["path"]:
-                        local_path = sg_item["path"].get("local_path", None)
+                sg_item_path = sg_item.get("path", None)
+                if sg_item_path:
+                    local_path = sg_item_path.get("local_path", None)
+                    if local_path:
                         modified_local_path = self._create_key(local_path)
 
                         if modified_local_path and modified_local_path in fstat_dict:
